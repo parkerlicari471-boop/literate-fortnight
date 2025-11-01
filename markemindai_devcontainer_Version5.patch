@@ -1,0 +1,91 @@
+*** Begin Patch
+*** Add File: .devcontainer/devcontainer.json
++{
++  "name": "MarketMindAI Dev Container",
++  "build": {
++    "dockerfile": "Dockerfile",
++    "context": ".."
++  },
++  "image": null,
++  "customizations": {
++    "vscode": {
++      "extensions": [
++        "esbenp.prettier-vscode",
++        "dbaeumer.vscode-eslint",
++        "streetsidesoftware.code-spell-checker",
++        "ms-azuretools.vscode-docker",
++        "bradlc.vscode-tailwindcss",
++        "ms-vscode.vscode-typescript-next"
++      ],
++      "settings": {
++        "terminal.integrated.shell.linux": "/bin/bash",
++        "editor.formatOnSave": true,
++        "editor.defaultFormatter": "esbenp.prettier-vscode",
++        "files.eol": "\n"
++      }
++    }
++  },
++  "forwardPorts": [3000, 3001],
++  "postCreateCommand": "pnpm install && pnpm --filter api build || true",
++  "postStartCommand": "bash -lc \"pnpm install --offline || pnpm install && (pnpm dev > .devcontainer/dev-start.log 2>&1 &) && sleep 1 && echo 'MarketMindAI dev servers started (logs: .devcontainer/dev-start.log)'\"",
++  "remoteUser": "node",
++  "workspaceFolder": "/workspace",
++  "mounts": [
++    "source=${localWorkspaceFolder}/.git,target=/workspace/.git,type=bind,consistency=cached"
++  ],
++  "containerEnv": {
++    "NODE_ENV": "development"
++  },
++  "features": {
++    "ghcr.io/devcontainers/features/docker-in-docker:1": {}
++  },
++  "shutdownAction": "stopContainer"
++}
++
+*** End Patch
+*** Begin Patch
+*** Add File: .devcontainer/Dockerfile
++# Devcontainer for MarketMindAI
++# - Node LTS (20)
++# - pnpm installed globally
++# - Git, Curl, and other basic tools available
++ARG VARIANT="20-bullseye"
++FROM mcr.microsoft.com/devcontainers/node:0-${VARIANT}
++
++# Avoid running as root for workspace files
++ARG USERNAME=node
++ARG USER_UID=1000
++ARG USER_GID=$USER_UID
++
++# Install system packages
++RUN apt-get update && \
++    apt-get install -y --no-install-recommends \
++      git \
++      lsb-release \
++      ca-certificates \
++      build-essential \
++      python3 \
++      curl && \
++    rm -rf /var/lib/apt/lists/*
++
++# Install pnpm globally
++RUN corepack enable && corepack prepare pnpm@latest --activate
++
++# Create workspace folder and set permissions
++RUN mkdir -p /workspace && chown ${USERNAME}:${USERNAME} /workspace
++
++WORKDIR /workspace
++
++# Ensure node user owns the workspace and will be used
++USER ${USERNAME}
++
++# Default shell for Codespaces
++SHELL ["/bin/bash", "-lc"]
++
++# Helpful message on container start
++RUN echo "MarketMindAI devcontainer ready. Use pnpm to install deps."
++
++# Expose typical dev ports (no effect in Codespaces but useful)
++EXPOSE 3000 3001
++
+*** End Patch
